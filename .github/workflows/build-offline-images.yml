@@ -1,0 +1,45 @@
+name: Build Hoppscotch Offline Docker Images
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-offline:
+    name: Build Docker Images and Export as TAR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---------------- Backend ----------------
+      - name: Build hoppscotch-backend image
+        run: |
+          cd packages/hoppscotch-backend
+          docker build -t hoppscotch-backend-local:latest .
+
+      - name: Save backend image to TAR
+        run: |
+          docker save hoppscotch-backend-local:latest -o hoppscotch-backend.tar
+
+      # ---------------- Selfhost Web ----------------
+      - name: Build hoppscotch-selfhost-web image
+        run: |
+          cd packages/hoppscotch-selfhost-web
+          docker build -t hoppscotch-selfhost-web-local:latest .
+
+      - name: Save selfhost web image to TAR
+        run: |
+          docker save hoppscotch-selfhost-web-local:latest -o hoppscotch-selfhost-web.tar
+
+      # ---------------- Upload as Release Assets ----------------
+      - name: Upload TAR artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hoppscotch-offline-docker-images
+          path: |
+            hoppscotch-backend.tar
+            hoppscotch-selfhost-web.tar
