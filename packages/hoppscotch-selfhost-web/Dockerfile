@@ -1,44 +1,35 @@
 # -----------------------------
-# 1. Builder Stage
+# 1. Builder Stage (Node 20)
 # -----------------------------
 FROM node:20-bullseye AS builder
 
 WORKDIR /app
 
-# Install pnpm
 RUN npm install -g pnpm
 
 # Copy workspace files
-COPY pnpm-workspace.yaml ./
-COPY pnpm-lock.yaml ./
-COPY package.json ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 
-# Copy packages
-COPY packages ./packages
+# Copy only web + libs
+COPY packages/hoppscotch-selfhost-web ./packages/hoppscotch-selfhost-web
 COPY libs ./libs
 
-# Install only necessary workspace dependencies
-RUN pnpm install --frozen-lockfile
+# Install only web deps (skip backend)
+RUN pnpm install --filter hoppscotch-selfhost-web... --frozen-lockfile
 
-# Build backend (required for web)
-WORKDIR /app/packages/hoppscotch-backend
-RUN pnpm build
-
-# Build selfhost web
+# Build the web
 WORKDIR /app/packages/hoppscotch-selfhost-web
 RUN pnpm build
 
 
 # -----------------------------
-# 2. Final Stage
+# 2. Final Stage — Caddy
 # -----------------------------
 FROM caddy:2-alpine
 
 WORKDIR /site
 
 COPY packages/hoppscotch-selfhost-web/Caddyfile /etc/caddy/Caddyfile
-
-# Copy web build output
 COPY --from=builder /app/packages/hoppscotch-selfhost-web/dist/ /site/
 
 EXPOSE 8080
